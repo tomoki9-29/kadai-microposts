@@ -97,6 +97,60 @@ class User extends Model implements AuthenticatableContract,
         return Micropost::whereIn('user_id', $follow_user_ids);
     }
     
+    public function favoritesUser()
+    {
+        return $this->belongsToMany(Micropost::class, 'favorites', 'user_id', 'microposts_id')->withTimestamps();
+    }
+    
+    /*public function micropostsUser()
+    {
+        return $this->belongsToMany(User::class, 'favorites', 'microposts_id', 'user_id')->withTimestamps();
+    }*/
+    
+    public function favorite($micropostId)
+    {
+        // 既にフォローしているかの確認
+        $exist = $this->is_favoriting($micropostId);
+        // 自分自身ではないかの確認
+        $its_me = $this->id == $micropostId;
+        
+        if ($exist || $its_me) {
+            // 既にフォローしていれば何もしない
+            return false;
+        } else {
+            // 未フォローであればフォローする
+            $this->favoritesUser()->attach($micropostId);
+            return true;
+        }
+    }
+    
+    public function unfavorite($micropostId)
+    {
+        // 既にフォローしているかの確認
+        $exist = $this->is_favoriting($micropostId);
+        // 自分自身ではないかの確認
+        $its_me = $this->id == $micropostId;
+        
+        if ($exist && !$its_me) {
+            // 既にフォローしていればフォローを外す
+            $this->favoritesUser()->detach($micropostId);
+            return true;
+        } else {
+            // 未フォローであれば何もしない
+            return false;
+        }
+    }
+    
+    public function is_favoriting($micropostId) {
+        return $this->favoritesUser()->where('microposts_id', $micropostId)->exists();
+    }
+    
+    public function favorite_microposts()
+    {
+        $favorite_micropost_ids = $this->favoritesUser()->lists('microposts.id')->toArray();
+        //$favorite_micropost_ids[] = $this->id;
+        return Micropost::whereIn('id', $favorite_micropost_ids);
+    }
 }
 
 
